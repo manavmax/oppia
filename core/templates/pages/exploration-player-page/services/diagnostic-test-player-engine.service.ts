@@ -100,6 +100,7 @@ export class DiagnosticTestPlayerEngineService {
             this._diagnosticTestCurrentTopicStatusModel.getNextQuestion(
               this._currentSkillId
             );
+          this.recordNewCardAdded();
           const stateCard = this.createCard(this._currentQuestion);
           successCallback(stateCard, this._focusLabel);
         },
@@ -159,6 +160,7 @@ export class DiagnosticTestPlayerEngineService {
               this._diagnosticTestCurrentTopicStatusModel.getNextQuestion(
                 this._currentSkillId
               );
+            this.recordNewCardAdded();
             return successCallback(this._currentQuestion);
           },
           () => {
@@ -178,6 +180,7 @@ export class DiagnosticTestPlayerEngineService {
         this._diagnosticTestCurrentTopicStatusModel.getNextQuestion(
           this._currentSkillId
         );
+      this.recordNewCardAdded();
       return successCallback(this._currentQuestion);
     }
   }
