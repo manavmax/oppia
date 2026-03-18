@@ -188,56 +188,80 @@ class ContributionOpportunitiesHandler(
         for classroom in classrooms:
             classroom_topic_ids.extend(classroom.get_topic_ids())
         classroom_topics = topic_fetchers.get_topics_by_ids(classroom_topic_ids)
-        # Associate each skill with one classroom topic name.
+
+        # Fetch topic rights to determine publication status.
+        topic_rights = topic_fetchers.get_multi_topic_rights(
+            classroom_topic_ids
+        )
+        topic_id_to_is_published = {
+            rights.id: rights.topic_is_published
+            for rights in topic_rights
+            if rights is not None
+        }
+
+        # Associate each skill with one classroom topic name and its status.
         # TODO(#8912): Associate each skill/skill opportunity with all linked
         # topics.
-        classroom_topic_skill_id_to_topic_name = {}
+        skill_id_to_topic_info = {}
         for topic in classroom_topics:
             if topic is None:
                 continue
+            is_published = topic_id_to_is_published.get(topic.id, False)
             for skill_id in topic.get_all_skill_ids():
-                classroom_topic_skill_id_to_topic_name[skill_id] = topic.name
+                skill_id_to_topic_info[skill_id] = {
+                    'topic_name': topic.name,
+                    'is_published': is_published,
+                }
 
-        skill_opportunities, cursor, more = (
-            opportunity_services.get_skill_opportunities(cursor)
+        # Fetch all skill opportunities for these topics to allow global sorting.
+        all_skill_ids = list(skill_id_to_topic_info.keys())
+        skill_id_to_opportunity = (
+            opportunity_services.get_skill_opportunities_by_ids(all_skill_ids)
         )
-        opportunities: List[ClientSideSkillOpportunityDict] = []
-        # Fetch opportunities until we have at least a page's worth that
-        # correspond to a classroom or there are no more opportunities.
-        while len(opportunities) < constants.OPPORTUNITIES_PAGE_SIZE:
-            for skill_opportunity in skill_opportunities:
-                if (
-                    skill_opportunity.id
-                    in classroom_topic_skill_id_to_topic_name
-                ):
-                    skill_opportunity_dict = skill_opportunity.to_dict()
-                    client_side_skill_opportunity_dict: (
-                        ClientSideSkillOpportunityDict
-                    ) = {
-                        'id': skill_opportunity_dict['id'],
-                        'skill_description': skill_opportunity_dict[
-                            'skill_description'
-                        ],
-                        'question_count': skill_opportunity_dict[
-                            'question_count'
-                        ],
-                        'topic_name': (
-                            classroom_topic_skill_id_to_topic_name[
-                                skill_opportunity.id
-                            ]
-                        ),
-                    }
-                    opportunities.append(client_side_skill_opportunity_dict)
-            if (
-                not more
-                or len(opportunities) >= constants.OPPORTUNITIES_PAGE_SIZE
-            ):
-                break
-            skill_opportunities, cursor, more = (
-                opportunity_services.get_skill_opportunities(cursor)
-            )
 
-        return opportunities, cursor, more
+        opportunities: List[ClientSideSkillOpportunityDict] = []
+        for skill_id, skill_opportunity in skill_id_to_opportunity.items():
+            if skill_opportunity is not None:
+                topic_info = skill_id_to_topic_info[skill_id]
+                opportunities.append(
+                    {
+                        'id': skill_id,
+                        'skill_description': skill_opportunity.skill_description,
+                        'question_count': skill_opportunity.question_count,
+                        'topic_name': topic_info['topic_name'],
+                    }
+                )
+
+        # Define the priority for each opportunity for structured ordering.
+        # Priority 1: Published & question_count < 10.
+        # Priority 2: Published & question_count >= 10.
+        # Priority 3: Unpublished.
+        def get_sort_key(
+            opp: ClientSideSkillOpportunityDict,
+        ) -> Tuple[int, int, str]:
+            is_published = skill_id_to_topic_info[opp['id']]['is_published']
+            count = opp['question_count']
+            if is_published:
+                if count < 10:
+                    # Tier 1: Sorted descending by count.
+                    return (0, -count, opp['skill_description'])
+                # Tier 2.
+                return (1, 0, opp['skill_description'])
+            # Tier 3.
+            return (2, 0, opp['skill_description'])
+
+        opportunities.sort(key=get_sort_key)
+
+        # Handle pagination using offset-based cursor.
+        offset = int(cursor) if cursor else 0
+        limit = constants.OPPORTUNITIES_PAGE_SIZE
+        page_opportunities = opportunities[offset : offset + limit]
+
+        next_offset = offset + limit
+        more = next_offset < len(opportunities)
+        next_cursor = str(next_offset) if more else None
+
+        return page_opportunities, next_cursor, more
 
     def _get_translation_opportunity_dicts(
         self,
