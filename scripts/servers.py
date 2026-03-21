@@ -435,7 +435,7 @@ def managed_redis_server() -> Iterator[psutil.Process]:
                 common.wait_for_port_to_be_in_use(feconf.REDISPORT)
                 yield proc
         finally:
-            # Ensure redis is shut down properly on macOS
+            # Ensure redis is shut down properly on macOS.
             subprocess.check_call([common.REDIS_CLI_PATH, 'shutdown', 'nosave'])
     else:
         with proc_context as proc:

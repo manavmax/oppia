@@ -36,17 +36,14 @@ import subprocess
 import sys
 import tarfile
 
+from typing import Final
+
 from . import (
-    install_python_dev_dependencies,  # pylint: disable=wrong-import-position, wrong-import-order
-)
-from . import (
+    clean,
+    common,
     install_dependencies_json_packages,
     install_python_prod_dependencies,
 )
-
-from typing import Final
-
-from . import clean, common
 
 # Place to download zip files for temporary storage.
 TMP_UNZIP_PATH: Final = os.path.join('.', 'tmp_unzip.zip')
