@@ -381,7 +381,7 @@ def install_redis_cli() -> None:
             # It will build the redis-cli and redis-server files so that we can
             # run the server from inside the oppia folder by executing the
             # script src/redis-cli and src/redis-server.
-            subprocess.call(['make'])
+            subprocess.check_call(['make'])
 
         # Make the scripts executable.
         subprocess.call(['chmod', '+x', common.REDIS_SERVER_PATH])
@@ -434,20 +434,6 @@ def main() -> None:
         pre_commit_hook,
         pre_push_hook,
     )
-
-    # Install additional runtime modules if they are missing.
-    # This is to ensure that the environment is fully set up for tests.
-    if not os.path.exists(
-        os.path.join(
-            common.OPPIA_TOOLS_DIR, 'redis-cli-%s' % common.REDIS_CLI_VERSION
-        )
-    ):
-        install_redis_cli()
-
-    if not os.path.exists(
-        os.path.join(common.OPPIA_TOOLS_DIR, 'google-cloud-sdk')
-    ):
-        install_gcloud_sdk()
 
     if common.is_windows_os():
         raise Exception(

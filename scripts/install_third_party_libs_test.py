@@ -315,12 +315,13 @@ class InstallRedisAndElasticSearchTests(test_utils.GenericTestBase):
             return Ret()
 
         swap_call = self.swap(subprocess, 'call', mock_call)
+        swap_check_call = self.swap(subprocess, 'check_call', mock_call)
         untar_files_swap = self.swap(
             install_third_party_libs,
             'download_and_untar_files',
             mock_download_and_untar_files,
         )
-        with swap_call, untar_files_swap:
+        with swap_call, swap_check_call, untar_files_swap:
             install_third_party_libs.install_redis_cli()
 
         self.assertEqual(check_function_calls, expected_check_function_calls)

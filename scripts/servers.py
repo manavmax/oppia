@@ -446,6 +446,16 @@ def managed_redis_server() -> Iterator[psutil.Process]:
                     # case we can just proceed.
                     pass
 
+                # If the port is still in use, then the redis server did not
+                # shut down correctly. In this case, we terminate the
+                # process manually.
+                if common.is_port_in_use(feconf.REDISPORT):
+                    proc.terminate()
+                    try:
+                        proc.wait(timeout=10)
+                    except psutil.TimeoutExpired:
+                        proc.kill()
+
 
 def create_managed_web_browser(port: int) -> ContextManager[psutil.Process]:
     """Returns a ContextManager for a web browser targeting the given port on
