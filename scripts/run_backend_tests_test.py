@@ -523,7 +523,7 @@ class RunBackendTestsTests(test_utils.GenericTestBase):
         with self.swap_execute_task, swap_check_coverage:
             with self.swap_cloud_datastore_emulator, swap_check_results:
                 with swap_time_report_path, self.swap_redis_server:
-                    with self.print_swap:
+                    with self.print_swap, self.swap_install_third_party_libs:
                         run_backend_tests.main(args=['--generate_time_report'])
         loaded_time_report = json.loads(time_report_temp_file.read())
         self.assertEqual(loaded_time_report, expected_time_report)
@@ -610,7 +610,7 @@ class RunBackendTestsTests(test_utils.GenericTestBase):
         )
         with self.swap_execute_task, swapcheck_coverage, self.swap_redis_server:
             with self.swap_cloud_datastore_emulator, swap_check_results:
-                with self.print_swap:
+                with self.print_swap, self.swap_install_third_party_libs:
                     run_backend_tests.main(
                         args=['--test_targets', 'scripts.run_backend_tests.py']
                     )
@@ -767,7 +767,7 @@ class RunBackendTestsTests(test_utils.GenericTestBase):
             test_target,
             '--generate_coverage_report',
         ]
-        with self.print_swap:
+        with self.print_swap, self.swap_install_third_party_libs:
             with swap_check_coverage, self.swap_redis_server, swap_execute_task:
                 with self.swap_cloud_datastore_emulator, swap_check_results:
                     run_backend_tests.main(args=args)

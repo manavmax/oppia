@@ -50,6 +50,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import fnmatch
 import json
 import multiprocessing
 import os
@@ -95,6 +96,18 @@ TIME_REPORT_PATH: Final = os.path.join(
 # observed after upgrading apache-beam[gcp] in PR #20752. Tests encountering
 # this error are retried to handle potential flakiness.
 ERROR_RETRY_CODE: Final = 'Error -11'
+
+_EXCLUDED_DIRS: Final = (
+    '.git',
+    'third_party',
+    'node_modules',
+    'venv',
+    'core/tests/data',
+    'core/tests/build_sources',
+    '.direnv',
+    'oppia_beam_job-*',
+    '*.egg-info',
+)
 
 _PARSER: Final = argparse.ArgumentParser(
     description="""
@@ -252,29 +265,34 @@ def get_all_test_targets_from_path(
     containing tests.
     """
     base_path = os.path.join(os.getcwd(), test_path or '')
+
+    def is_excluded(path: str) -> bool:
+        """Checks if the given path should be excluded from test discovery."""
+        rel_path = os.path.normpath(os.path.relpath(path, start=os.getcwd()))
+        if rel_path == '.':
+            return False
+        
+        path_parts = rel_path.split(os.sep)
+        # Check if any parent directory match an excluded pattern.
+        current_path = ''
+        for part in path_parts:
+            current_path = os.path.join(current_path, part) if current_path else part
+            if any(fnmatch.fnmatch(current_path, pattern) or fnmatch.fnmatch(part, pattern) for pattern in _EXCLUDED_DIRS):
+                return True
+        return False
+
     paths = []
-    excluded_dirs = [
-        '.git',
-        'third_party',
-        'node_modules',
-        'venv',
-        'core/tests/data',
-        'core/tests/build_sources',
-        '.direnv',
-    ]
-    for root in os.listdir(base_path):
-        if any(s in root for s in excluded_dirs):
+    for root, dirs, files in os.walk(base_path):
+        if is_excluded(root):
+            dirs[:] = []
             continue
-        if root.endswith('_test.py'):
-            paths.append(os.path.join(base_path, root))
-        for subroot, _, files in os.walk(os.path.join(base_path, root)):
-            if any(s in subroot for s in excluded_dirs):
-                continue
-            if _LOAD_TESTS_DIR in subroot and not include_load_tests:
-                continue
-            for f in files:
-                if f.endswith('_test.py'):
-                    paths.append(os.path.join(subroot, f))
+        if _LOAD_TESTS_DIR in root and not include_load_tests:
+            dirs[:] = []
+            continue
+        for f in files:
+            if f.endswith('_test.py'):
+                paths.append(os.path.join(root, f))
+
     result = [
         os.path.relpath(path, start=os.getcwd())[:-3].replace('/', '.')
         for path in paths
