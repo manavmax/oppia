@@ -271,7 +271,7 @@ def get_all_test_targets_from_path(
         rel_path = os.path.normpath(os.path.relpath(path, start=os.getcwd()))
         if rel_path == '.':
             return False
-        
+
         path_parts = rel_path.split(os.sep)
         # Check if any parent directory match an excluded pattern.
         current_path = ''

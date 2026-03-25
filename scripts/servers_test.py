@@ -629,7 +629,7 @@ class ManagedProcessTests(test_utils.TestBase):
         mock_state = {'is_port_in_use': True}
         check_call_args_list: List[List[str]] = []
 
-        def mock_is_port_in_use(port: int) -> bool:
+        def mock_is_port_in_use(_: int) -> bool:
             return mock_state['is_port_in_use']
 
         self.exit_stack.enter_context(
@@ -663,6 +663,7 @@ class ManagedProcessTests(test_utils.TestBase):
 
             # Simulate process ending after shutdown.
             original_proc_wait = proc.wait
+
             def mock_proc_wait(timeout: Optional[int] = None) -> None:
                 if not mock_state['is_port_in_use']:
                     proc.alive = False
@@ -704,7 +705,7 @@ class ManagedProcessTests(test_utils.TestBase):
         mock_state = {'is_port_in_use': True}
         check_call_args_list: List[List[str]] = []
 
-        def mock_is_port_in_use(port: int) -> bool:
+        def mock_is_port_in_use(_: int) -> bool:
             return mock_state['is_port_in_use']
 
         self.exit_stack.enter_context(
@@ -731,6 +732,7 @@ class ManagedProcessTests(test_utils.TestBase):
         with servers.managed_redis_server() as proc:
             # Simulate process ending after shutdown.
             original_proc_wait = proc.wait
+
             def mock_proc_wait(timeout: Optional[int] = None) -> None:
                 if not mock_state['is_port_in_use']:
                     proc.alive = False
